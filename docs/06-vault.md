@@ -66,18 +66,24 @@ vault status
 ```
 
 ```
-Error checking seal status: Error making API request.
-
-URL: GET https://XX.XXX.XXX.XX:8200/v1/sys/seal-status
-Code: 400. Errors:
-
-* server is not yet initialized
+Key                Value
+---                -----
+Seal Type          shamir
+Initialized        false
+Sealed             true
+Total Shares       0
+Threshold          0
+Unseal Progress    0/0
+Unseal Nonce       n/a
+Version            1.8.1
+Storage Type       consul
+HA Enabled         true
 ```
 
-The above error indicates the Vault cluster needs to be initialized. Initialize the Vault cluster:
+The above indicates the Vault cluster needs to be initialized. Initialize the Vault cluster:
 
 ```
-vault init
+vault operator init
 ```
 
 ```
@@ -104,7 +110,7 @@ Save the five unseal keys and the initial root token.
 Unseal the Vault instance using three of the unseal keys:
 
 ```
-vault unseal
+vault operator unseal
 ```
 
 ```
@@ -158,7 +164,7 @@ At this point the Vault cluster has been initialized and is ready for use.
 Login to the Vault cluster using the initial root token:
 
 ```
-vault auth
+vault login
 ```
 
 ```
@@ -178,7 +184,7 @@ Nomad has native [Vault integration](https://www.nomadproject.io/docs/vault-inte
 Create the `nomad-server` policy:
 
 ```
-vault policy-write nomad-server nomad-server-policy.hcl
+vault policy write nomad-server nomad-server-policy.hcl
 ```
 
 Create the `nomad-cluster` role:
@@ -190,7 +196,7 @@ vault write /auth/token/roles/nomad-cluster @nomad-cluster-role.json
 Generate a new role based Vault token based on the `nomad-server` policy:
 
 ```
-NOMAD_VAULT_TOKEN=$(vault token-create \
+NOMAD_VAULT_TOKEN=$(vault token create \
   -policy nomad-server \
   -period 72h \
   -orphan \

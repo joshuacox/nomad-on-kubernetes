@@ -62,7 +62,7 @@ source nomad.env
 List the Nomad cluster server members:
 
 ```
-nomad server-members
+nomad server members
 ```
 
 ```

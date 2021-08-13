@@ -1,14 +1,17 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: consul
 spec:
+  selector:
+    matchLabels:
+      app: consul # has to match .spec.template.metadata.labels
   serviceName: consul
   replicas: 3
   template:
     metadata:
       labels:
-        app: consul
+        app: consul # has to match .spec.selector.matchLabels
     spec:
       affinity:
         podAntiAffinity:
@@ -22,7 +25,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: consul
-          image: "consul:0.9.3"
+          image: "consul:1.10.1"
           env:
             - name: GOSSIP_ENCRYPTION_KEY
               valueFrom:

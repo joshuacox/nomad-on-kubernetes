@@ -4,8 +4,10 @@ job "ping" {
   type = "service"
 
   group "example" {
+    count = 2
+
     task "ping" {
-      driver = "exec"
+      driver = "raw_exec"
 
       config {
         command = "/bin/ping"

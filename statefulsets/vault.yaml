@@ -1,14 +1,17 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: vault
 spec:
+  selector:
+    matchLabels:
+      app: vault # has to match .spec.template.metadata.labels
   serviceName: vault
   replicas: 1
   template:
     metadata:
       labels:
-        app: vault
+        app: vault # has to match .spec.selector.matchLabels
     spec:
       affinity:
         podAntiAffinity:
@@ -29,7 +32,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: vault
-          image: "vault:0.8.2"
+          image: "vault:1.8.1"
           args:
             - "server"
             - "-config=/etc/vault/config/vault.hcl"

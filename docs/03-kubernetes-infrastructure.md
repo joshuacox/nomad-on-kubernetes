@@ -10,11 +10,17 @@ Kubernetes will be used to host the Nomad control plane including the following 
 
 A Kubernetes 1.7.5+ cluster is required to host the Nomad control plane components. Use the `gcloud` command to provision a three node Kubernetes cluster:
 
+Set your GCP zone:
+```
+GCP_ZONE=us-west1-c
+```
+
 ```
 gcloud container clusters create nomad \
-  --cluster-version 1.7.5 \
   --machine-type n1-standard-2 \
-  --num-nodes 3
+  --num-nodes 3 \
+  --release-channel stable \
+  --zone ${GCP_ZONE}
 ```
 
 It can take several minutes to provision the `nomad` Kubernetes cluster. Either wait for the above command to complete or use the `gcloud` command to monitor progress in a separate terminal:
@@ -46,7 +52,8 @@ gcloud container node-pools create vault-pool \
   --cluster nomad \
   --machine-type n1-standard-2 \
   --num-nodes 2 \
-  --node-labels dedicated=vault
+  --node-labels dedicated=vault \
+  --zone ${GCP_ZONE}
 ```
 
 > Estimated time to completion: 2 minutes.
@@ -54,7 +61,7 @@ gcloud container node-pools create vault-pool \
 List the node pools for the `nomad` Kubernetes cluster:
 
 ```
-gcloud container node-pools list --cluster nomad
+gcloud container node-pools list --cluster nomad --zone ${GCP_ZONE}
 ```
 ```
 NAME          MACHINE_TYPE   DISK_SIZE_GB  NODE_VERSION

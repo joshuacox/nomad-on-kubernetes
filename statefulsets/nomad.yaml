@@ -1,14 +1,17 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: nomad
 spec:
+  selector:
+    matchLabels:
+      app: nomad # has to match .spec.template.metadata.labels
   serviceName: nomad
   replicas: 3
   template:
     metadata:
       labels:
-        app: nomad
+        app: nomad # has to match .spec.selector.matchLabels
     spec:
       affinity:
         podAntiAffinity:
@@ -22,7 +25,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: nomad
-          image: "gcr.io/hightowerlabs/nomad:0.6.3"
+          image: "multani/nomad:1.1.3"
           env:
             - name: VAULT_TOKEN
               valueFrom:
@@ -59,7 +62,7 @@ spec:
             - name: vault-tls
               mountPath: /etc/vault/tls
         - name: consul
-          image: "consul:0.9.3"
+          image: "consul:1.10.1"
           env:
             - name: GOSSIP_ENCRYPTION_KEY
               valueFrom:

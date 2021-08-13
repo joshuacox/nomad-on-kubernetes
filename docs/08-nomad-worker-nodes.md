@@ -8,6 +8,11 @@ An [instance group](https://cloud.google.com/compute/docs/instance-groups/) will
 
 ### Create the Nomad Instance Template
 
+Set your GCP zone:
+```
+GCP_ZONE=us-west1-c
+```
+
 The Consul internal IP address and gossip encryption key are required to configure the Consul agent running on each Nomad worker instance. Consul provides service discovery for Nomad agents and Jobs.
 
 Retrieve the Consul gossip encryption key:
@@ -16,10 +21,17 @@ Retrieve the Consul gossip encryption key:
 GOSSIP_ENCRYPTION_KEY=$(cat ~/.gossip_encryption_key)
 ```
 
-Retrieve the Consul internal IP address:
+Retrieve the Nomad external IP address:
 
 ```
-CONSUL_INTERNAL_IP=$(kubectl get svc consul-internal-load-balancer \
+NOMAD_EXTERNAL_IP=$(kubectl get svc nomad \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+```
+
+Retrieve the Vault external IP address:
+
+```
+VAULT_EXTERNAL_IP=$(kubectl get svc vault \
   -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 ```
 
@@ -32,8 +44,8 @@ gcloud compute instance-templates create nomad-instance-template \
   --image-family ubuntu-1604-lts \
   --image-project ubuntu-os-cloud \
   --machine-type n1-standard-2 \
-  --metadata "gossip-encryption-key=${GOSSIP_ENCRYPTION_KEY},consul-internal-ip=${CONSUL_INTERNAL_IP}" \
-  --metadata-from-file "startup-script=nomad.sh,ca-cert=ca.pem,consul-cert=consul.pem,consul-key=consul-key.pem,nomad-cert=nomad.pem,nomad-key=nomad-key.pem" \
+  --metadata "gossip-encryption-key=${GOSSIP_ENCRYPTION_KEY},nomad-external-ip=${NOMAD_EXTERNAL_IP},vault-external-ip=${VAULT_EXTERNAL_IP}" \
+  --metadata-from-file "startup-script=nomad.sh,ca-cert=ca.pem,nomad-cert=nomad.pem,nomad-key=nomad-key.pem" \
   --scopes default,compute-ro \
   --tags nomad
 ```
@@ -50,7 +62,8 @@ Create the `nomad` managed instance group:
 gcloud compute instance-groups managed create nomad \
   --base-instance-name nomad \
   --size 1 \
-  --template nomad-instance-template
+  --template nomad-instance-template \
+  --zone ${GCP_ZONE}
 ```
 
 > A single Nomad worker is being provisioned to control cost. Increase the number given to the `--size` flag for more instances.
@@ -58,7 +71,7 @@ gcloud compute instance-groups managed create nomad \
 It can take a few minutes to provision the Nomad worker instances. Use the `gcloud` command to monitor progress:
 
 ```
-gcloud compute instance-groups list-instances nomad
+gcloud compute instance-groups list-instances nomad --zone ${GCP_ZONE}
 ```
 ```
 NAME        ZONE           STATUS
@@ -89,7 +102,7 @@ source nomad.env
 Check the status of the Nomad worker nodes:
 
 ```
-nomad node-status
+nomad node status
 ```
 
 ```

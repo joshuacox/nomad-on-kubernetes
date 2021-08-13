@@ -2,12 +2,10 @@
 
 CA_CERT=$(curl -s -H "Metadata-Flavor: Google" \
   http://metadata.google.internal/computeMetadata/v1/instance/attributes/ca-cert)
-CONSUL_CERT=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/instance/attributes/consul-cert)
-CONSUL_KEY=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/instance/attributes/consul-key)
-CONSUL_INTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/instance/attributes/consul-internal-ip)
+NOMAD_EXTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" \
+  http://metadata.google.internal/computeMetadata/v1/instance/attributes/nomad-external-ip)
+VAULT_EXTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" \
+  http://metadata.google.internal/computeMetadata/v1/instance/attributes/vault-external-ip)
 EXTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" \
   http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip)
 GOSSIP_ENCRYPTION_KEY=$(curl -s -H "Metadata-Flavor: Google" \
@@ -18,76 +16,19 @@ NOMAD_KEY=$(curl -s -H "Metadata-Flavor: Google" \
   http://metadata.google.internal/computeMetadata/v1/instance/attributes/nomad-key)
 
 apt-get update
-apt-get install -y wget unzip dnsmasq
-
-## Download Consul
-wget -O consul_0.9.3_linux_amd64.zip \
-  https://releases.hashicorp.com/consul/0.9.3/consul_0.9.3_linux_amd64.zip?_ga=2.42765413.1704913238.1505691878-1833551740.1502228991
+apt-get install -y wget unzip
 
 ## Download Nomad
-wget -O nomad_0.6.3_linux_amd64.zip \
-  https://releases.hashicorp.com/nomad/0.6.3/nomad_0.6.3_linux_amd64.zip?_ga=2.242342786.1815219695.1505691898-586844811.1502289673
+wget -O nomad_1.1.3_linux_amd64.zip \
+  https://releases.hashicorp.com/nomad/1.1.3/nomad_1.1.3_linux_amd64.zip
 
-## Install Consul and Nomad
-unzip consul_0.9.3_linux_amd64.zip
-unzip nomad_0.6.3_linux_amd64.zip
+## Install Nomad
+unzip nomad_1.1.3_linux_amd64.zip
 
-chmod +x consul nomad
-mv consul nomad /usr/local/bin
+chmod +x nomad
+mv nomad /usr/local/bin
 
-rm consul_0.9.3_linux_amd64.zip nomad_0.6.3_linux_amd64.zip
-
-
-## Configure and Start Consul
-mkdir -p /etc/consul
-mkdir -p /etc/consul/tls
-mkdir -p /var/lib/consul
-
-echo "${CA_CERT}" > /etc/consul/tls/ca.pem
-echo "${CONSUL_CERT}" > /etc/consul/tls/consul.pem
-echo "${CONSUL_KEY}" > /etc/consul/tls/consul-key.pem
-
-cat > /etc/consul/agent.json <<EOF
-{
-  "ca_file": "/etc/consul/tls/ca.pem",
-  "cert_file": "/etc/consul/tls/consul.pem",
-  "key_file": "/etc/consul/tls/consul-key.pem",
-  "verify_outgoing": true,
-  "verify_server_hostname": true
-}
-EOF
-
-cat > /etc/systemd/system/consul.service <<EOF
-[Unit]
-Description=Consul
-Documentation=https://www.consul.io/docs
-
-[Service]
-ExecStart=/usr/local/bin/consul agent \\
-  -config-file /etc/consul/agent.json \\
-  -data-dir /var/lib/consul \\
-  -encrypt ${GOSSIP_ENCRYPTION_KEY} \\
-  -retry-join ${CONSUL_INTERNAL_IP}
-ExecReload=/bin/kill -HUP $MAINPID
-LimitNOFILE=65536
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl enable consul
-systemctl start consul
-
-## Setup dnsmasq
-
-mkdir -p /etc/dnsmasq.d
-cat > /etc/dnsmasq.d/10-consul.conf <<'EOF'
-server=/consul/127.0.0.1#8600
-EOF
-
-systemctl enable dnsmasq
-systemctl restart dnsmasq
-
+rm nomad_1.1.3_linux_amd64.zip
 
 ## Configure and Start Nomad
 mkdir -p /etc/nomad
@@ -111,6 +52,12 @@ client {
   options {
     "driver.raw_exec.enable" = "1"
   }
+
+  server_join {
+    retry_join = [ "${NOMAD_EXTERNAL_IP}" ]
+    retry_max = 3
+    retry_interval = "15s"
+  }
 }
 
 data_dir = "/var/lib/nomad"
@@ -126,7 +73,7 @@ tls {
 }
 
 vault {
-  address = "https://vault.service.consul:8200"
+  address = "https://${VAULT_EXTERNAL_IP}:8200"
   ca_path = "/etc/nomad/tls/ca.pem"
   cert_file = "/etc/nomad/tls/nomad.pem"
   enabled = true
