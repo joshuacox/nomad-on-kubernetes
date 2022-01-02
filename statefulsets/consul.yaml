@@ -25,7 +25,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: consul
-          image: "consul:1.10.1"
+          image: "consul:1.11.1"
           env:
             - name: GOSSIP_ENCRYPTION_KEY
               valueFrom:
